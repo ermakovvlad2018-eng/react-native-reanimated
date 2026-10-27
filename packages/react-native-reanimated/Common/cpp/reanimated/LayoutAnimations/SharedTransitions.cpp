@@ -748,7 +748,8 @@ void LayoutAnimationsProxy::attachRetainedCarriers(
       continue;
     }
     // A removed carrier stays at the root, and the teardown removes it from there.
-    transaction.restoreRequests.push_back({sharedTag, run.target});
+    const auto &shownEndpoint = removals.contains(run.target->current.tag) ? run.source : run.target;
+    transaction.restoreRequests.push_back({sharedTag, shownEndpoint});
     for (const auto &carrier : run.carriers) {
       if (!isRemoved(carrier)) {
         attachCarrier(sharedTag, carrier, transaction.filteredMutations, propsParserContext);
@@ -1107,8 +1108,11 @@ void LayoutAnimationsProxy::finishSharedTransition(
     SharedElement &element,
     TransactionMeta &transaction,
     const PropsParserContext &propsParserContext) const {
-  transaction.restoreRequests.push_back({sharedTag, element.run->target});
-  attachCarriers(sharedTag, *element.run, transaction.filteredMutations, propsParserContext);
+  const auto &run = *element.run;
+  // Without a target the source is the view to show. A gesture restores its sources when the screen pop settles.
+  const bool showsSource = !isLightNodeMapped(run.target) && !run.gestureDriven;
+  transaction.restoreRequests.push_back({sharedTag, showsSource ? run.source : run.target});
+  attachCarriers(sharedTag, run, transaction.filteredMutations, propsParserContext);
   element.run.reset();
 }
 
